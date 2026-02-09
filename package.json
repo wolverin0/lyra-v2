@@ -1,0 +1,30 @@
+{
+  "name": "lyra-v2",
+  "version": "2.0.0",
+  "description": "Intelligent prompt router for Claude Code. Uses Haiku to analyze prompts and suggest optimal workflows (GSD commands, specialized agents, or direct execution).",
+  "main": "install.js",
+  "bin": {
+    "lyra-install": "install.js"
+  },
+  "scripts": {
+    "install-hooks": "node install.js",
+    "uninstall-hooks": "node install.js --uninstall"
+  },
+  "keywords": [
+    "claude-code",
+    "hooks",
+    "prompt-router",
+    "workflow-automation",
+    "gsd",
+    "ai-agent"
+  ],
+  "author": "wolverin0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wolverin0/lyra-v2.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
