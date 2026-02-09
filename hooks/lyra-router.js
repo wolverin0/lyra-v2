@@ -129,17 +129,22 @@ function main() {
   }
 
   const routes = {
-    'new-project': '[LYRA] Suggested: /gsd:new-project',
-    'plan-phase': '[LYRA] Suggested: /gsd:plan-phase',
-    'debug': '[LYRA] Suggested: /gsd:debug',
-    'code-review': '[LYRA] Suggested: @code-reviewer',
-    'security': '[LYRA] Suggested: @security-reviewer',
-    'build-error': '[LYRA] Suggested: @build-error-resolver',
-    'e2e': '[LYRA] Suggested: @e2e-runner',
-    'refactor': '[LYRA] Suggested: @refactor-cleaner',
+    'new-project': { skill: '/gsd:new-project', desc: 'New project — needs requirements gathering and roadmap' },
+    'plan-phase': { skill: '/gsd:plan-phase', desc: 'Complex feature — needs structured planning' },
+    'debug': { skill: '/gsd:debug', desc: 'Complex bug — needs systematic debugging' },
+    'code-review': { skill: '@code-reviewer', desc: 'Code review requested' },
+    'security': { skill: '@security-reviewer', desc: 'Security analysis needed' },
+    'build-error': { skill: '@build-error-resolver', desc: 'Build errors to resolve' },
+    'e2e': { skill: '@e2e-runner', desc: 'E2E testing needed' },
+    'refactor': { skill: '@refactor-cleaner', desc: 'Cleanup and refactoring' },
   };
 
-  process.stdout.write(routes[bestCategory]);
+  const route = routes[bestCategory];
+  const lines = [
+    `[LYRA ROUTING] Action: ${route.skill} | Reason: ${route.desc}`,
+    `INSTRUCTION: You MUST show the user "Lyra -> ${route.skill}" as the FIRST line of your response, then invoke the Skill tool with skill "${route.skill.replace(/^[@/]/, '')}" BEFORE doing any other work. Do NOT enter generic plan mode. Do NOT ask clarifying questions first. Invoke the skill immediately.`,
+  ];
+  process.stdout.write(lines.join('\n'));
 }
 
 main();
