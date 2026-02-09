@@ -11,8 +11,6 @@ const HOOKS_DIR = path.join(CLAUDE_DIR, 'hooks');
 const SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json');
 const isWindows = process.platform === 'win32';
 
-const LYRA_PROMPT = fs.readFileSync(path.join(__dirname, 'prompt.txt'), 'utf8').trim();
-
 function log(msg) { console.log(`  ${msg}`); }
 function ok(msg) { console.log(`  [OK] ${msg}`); }
 function warn(msg) { console.log(`  [!!] ${msg}`); }
@@ -57,6 +55,7 @@ function getPowershellPath() {
 function buildLyraHooks() {
   const nodePath = getNodePath();
   const contextPath = path.join(HOOKS_DIR, 'lyra-context.js').replace(/\\/g, '/');
+  const routerPath = path.join(HOOKS_DIR, 'lyra-router.js').replace(/\\/g, '/');
 
   const contextHook = {
     hooks: [{
@@ -68,9 +67,9 @@ function buildLyraHooks() {
 
   const routerHook = {
     hooks: [{
-      type: 'prompt',
-      prompt: LYRA_PROMPT,
-      timeout: 10,
+      type: 'command',
+      command: `${nodePath} "${routerPath}"`,
+      timeout: 5,
     }],
   };
 
@@ -103,7 +102,7 @@ function hasLyraHook(hookArray) {
   if (!Array.isArray(hookArray)) return false;
   return hookArray.some(entry =>
     entry.hooks && entry.hooks.some(h =>
-      (h.command && h.command.includes('lyra-context')) ||
+      (h.command && (h.command.includes('lyra-context') || h.command.includes('lyra-router'))) ||
       (h.prompt && h.prompt.includes('Lyra'))
     )
   );
@@ -113,7 +112,7 @@ function removeLyraHooks(hookArray) {
   if (!Array.isArray(hookArray)) return hookArray;
   return hookArray.filter(entry =>
     !(entry.hooks && entry.hooks.some(h =>
-      (h.command && h.command.includes('lyra-context')) ||
+      (h.command && (h.command.includes('lyra-context') || h.command.includes('lyra-router'))) ||
       (h.prompt && h.prompt.includes('Lyra')) ||
       (h.command && h.command.includes('stop-quality-gate'))
     ))
@@ -138,11 +137,11 @@ function install() {
   // Copy hook files
   log('Copying hooks...');
   copyHook('lyra-context.js');
+  copyHook('lyra-router.js');
   if (isWindows) {
     copyHook('stop-quality-gate.ps1');
   } else {
     copyHook('stop-quality-gate.sh');
-    // Make executable
     fs.chmodSync(path.join(HOOKS_DIR, 'stop-quality-gate.sh'), '755');
   }
 
@@ -152,7 +151,6 @@ function install() {
 
   let settings = {};
   if (fs.existsSync(SETTINGS_PATH)) {
-    // Backup first
     const backupPath = SETTINGS_PATH + '.lyra-backup';
     fs.copyFileSync(SETTINGS_PATH, backupPath);
     ok(`Backup saved to ${backupPath}`);
@@ -167,7 +165,6 @@ function install() {
   if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
 
   if (hasLyraHook(settings.hooks.UserPromptSubmit)) {
-    // Remove existing Lyra hooks first (upgrade path)
     settings.hooks.UserPromptSubmit = removeLyraHooks(settings.hooks.UserPromptSubmit);
     log('Removed existing Lyra hooks (upgrading)');
   }
@@ -180,8 +177,7 @@ function install() {
   // Stop — add quality gate
   if (!settings.hooks.Stop) settings.hooks.Stop = [];
 
-  if (hasLyraHook(settings.hooks.Stop) ||
-      settings.hooks.Stop.some(e => e.hooks && e.hooks.some(h => h.command && h.command.includes('quality-gate')))) {
+  if (settings.hooks.Stop.some(e => e.hooks && e.hooks.some(h => h.command && h.command.includes('quality-gate')))) {
     settings.hooks.Stop = settings.hooks.Stop.filter(e =>
       !(e.hooks && e.hooks.some(h => h.command && h.command.includes('quality-gate')))
     );
@@ -200,11 +196,11 @@ function install() {
   log('');
   log('What Lyra does:');
   log('  - Injects project state and stack into every prompt');
-  log('  - Uses Haiku to suggest optimal workflows (~0.1 cents/prompt)');
+  log('  - Scores prompts against 8 workflow patterns (instant, free)');
   log('  - Warns about console.log and uncommitted changes at session end');
   log('');
   log('Lyra outputs [LYRA] Suggested: ... when it detects a matching pattern.');
-  log('Most prompts get NO suggestion (by design — false positives are worse).');
+  log('Most prompts get NO suggestion (by design).');
   log('');
 }
 
@@ -235,7 +231,7 @@ function uninstall() {
   ok('Settings saved');
 
   // Remove hook files
-  const files = ['lyra-context.js', 'stop-quality-gate.ps1', 'stop-quality-gate.sh'];
+  const files = ['lyra-context.js', 'lyra-router.js', 'stop-quality-gate.ps1', 'stop-quality-gate.sh'];
   for (const f of files) {
     const p = path.join(HOOKS_DIR, f);
     if (fs.existsSync(p)) {
@@ -244,7 +240,6 @@ function uninstall() {
     }
   }
 
-  // Restore backup if exists
   const backupPath = SETTINGS_PATH + '.lyra-backup';
   if (fs.existsSync(backupPath)) {
     log(`Backup available at ${backupPath} if you want to restore.`);

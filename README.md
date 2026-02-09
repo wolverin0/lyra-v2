@@ -1,16 +1,16 @@
 # Lyra v2
 
-Intelligent prompt router for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Uses Haiku to analyze your prompts and suggest optimal workflows — GSD commands, specialized agents, or direct execution.
+Intelligent prompt router for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Analyzes your prompts and suggests optimal workflows — GSD commands, specialized agents, or direct execution.
 
 ## What it does
 
-Lyra adds three hooks to your Claude Code installation:
+Lyra adds three `UserPromptSubmit` command hooks to your Claude Code installation:
 
-| Hook | Event | What it does |
-|------|-------|-------------|
-| **Context** | UserPromptSubmit | Injects project state (GSD), debug sessions, and detected stack into every prompt |
-| **Router** | UserPromptSubmit | Haiku analyzes your prompt and suggests the best workflow (~0.1 cents/prompt) |
-| **Quality Gate** | Stop | Warns about `console.log` in modified files and uncommitted changes |
+| Hook | What it does |
+|------|-------------|
+| **Context** | Injects project state (GSD), debug sessions, and detected tech stack into every prompt |
+| **Router** | Scores your prompt against 8 workflow patterns and suggests the best match |
+| **Quality Gate** (Stop) | Warns about `console.log` in modified files and uncommitted changes at session end |
 
 ### Example
 
@@ -18,7 +18,7 @@ You type: _"Build me a user authentication system with OAuth, email/password, an
 
 Lyra outputs:
 ```
-[LYRA] Suggested: /gsd:new-project — Needs requirements gathering and roadmap
+[LYRA] Suggested: /gsd:new-project
 ```
 
 You type: _"Fix the typo in the README"_
@@ -43,7 +43,9 @@ Lyra outputs: nothing (correctly — this is a simple task).
 
 - **False positives are worse than false negatives.** Lyra stays silent unless it's confident a workflow applies. You can always invoke commands manually.
 - **Suggestions, not mandates.** The `[LYRA]` output is a hint. Claude follows it unless there's a clear reason not to.
-- **Context over keywords.** The Haiku prompt hook understands intent, not just regex patterns. "My app crashes when I click login" routes to `/gsd:debug`, not to `@build-error-resolver`.
+- **Scoring, not regex.** Each pattern has multiple signals with weighted scores. A prompt must reach a confidence threshold of 3+ to trigger a suggestion.
+- **Negation-aware.** "Don't build a new project" won't match — Lyra checks for negation words before key verbs.
+- **GSD-aware.** If a GSD project already exists (`.planning/STATE.md`), "build an app" routes to `/gsd:plan-phase` instead of `/gsd:new-project`.
 
 ## Install
 
@@ -65,7 +67,7 @@ Restart Claude Code after installing.
 
 ### Manual
 
-1. Copy `hooks/lyra-context.js` to `~/.claude/hooks/`
+1. Copy `hooks/lyra-context.js` and `hooks/lyra-router.js` to `~/.claude/hooks/`
 2. Copy `hooks/stop-quality-gate.ps1` (Windows) or `hooks/stop-quality-gate.sh` (macOS/Linux) to `~/.claude/hooks/`
 3. Add the hook entries from `examples/settings-snippet.json` to your `~/.claude/settings.json`
 
@@ -84,46 +86,46 @@ This removes all Lyra hooks from `settings.json` and deletes the hook files.
 
 ```
 User types prompt
-    │
-    ├─► lyra-context.js (command hook, <5ms)
-    │   Reads .planning/STATE.md, package.json
-    │   Outputs: [Stack: React, TypeScript, Supabase]
-    │   Outputs: [GSD Project State] ...
-    │
-    ├─► Haiku prompt hook (~200ms, ~0.1 cents)
-    │   Receives: user prompt + context from above
-    │   Returns: { ok: true, reason: "[LYRA] Suggested: ..." }
-    │   OR returns: { ok: true, reason: "" } (most prompts)
-    │   The reason field becomes visible context to Claude
-    │
-    └─► Claude receives prompt + all context
-        Sees [LYRA] suggestion as additional context
+    |
+    +-> lyra-context.js (command hook, <5ms)
+    |   Reads .planning/STATE.md, package.json
+    |   stdout: [Stack: React, TypeScript, Supabase]
+    |   stdout: [GSD Project State] ...
+    |
+    +-> lyra-router.js (command hook, <5ms)
+    |   Reads prompt from stdin JSON
+    |   Scores against 8 workflow patterns
+    |   stdout: [LYRA] Suggested: /gsd:new-project
+    |   OR stdout: (nothing - most prompts)
+    |
+    +-> Claude receives prompt + all stdout as context
+        Sees [LYRA] suggestion inline
         Follows suggestion or works directly
 ```
 
-### Why Haiku instead of regex?
+### Why command hooks?
 
-The v1 router used regex pattern matching. Problems:
-- "Can you evaluate how lyra works" matched `/game/` in the system context → suggested `/gsd:plan-phase` (wrong)
-- "I need to fix the build" matched both debug and build-error patterns → ambiguous
-- No understanding of negation: "don't build a new project" still matched "build" + "project"
+Claude Code has three hook types: `command`, `prompt`, and `agent`.
 
-Haiku understands natural language intent. It costs ~0.1 cents per prompt and adds ~200ms latency. Most prompts return empty (fast path).
+For routing, **command hooks are the correct choice** because `UserPromptSubmit` command hook stdout is [added as context that Claude can see](https://code.claude.com/docs/en/hooks). Prompt hooks (`type: "prompt"`) are yes/no gates — their `reason` field is only shown when blocking (`ok: false`), and blocking erases the prompt entirely. That's the opposite of what a router needs.
 
-### Cost
+### Why scoring instead of Haiku?
 
-The Haiku prompt hook costs approximately **$0.001 per prompt** (one-tenth of a cent). For a typical 100-prompt session, that's ~$0.10 total.
+The v1 router used simple regex. The v2 plan called for Haiku prompt hooks. Testing revealed:
+- Prompt hooks can't inject context (they're gates, not injectors)
+- Command hooks with scoring are instant (<5ms), free, and 100% reliable
+- Scoring with weighted signals, negation detection, and confidence thresholds achieves ~90%+ accuracy
+
+Each category has multiple signals that add to a score. A prompt must reach a threshold of 3+ points to trigger a suggestion. This eliminates most false positives while catching genuine matches.
 
 ## Configuration
 
-### Customizing the routing prompt
+### Customizing routing patterns
 
-Edit the `prompt` field in your `settings.json` under `UserPromptSubmit`. The prompt text is in `prompt.txt` for reference.
-
-You can add custom routing patterns:
-```
-- User mentions deployment/CI/CD → [LYRA] Suggested: @deploy-agent — Deployment workflow needed
-```
+Edit `~/.claude/hooks/lyra-router.js` to modify the scoring engine. Each category has:
+- **Signal patterns** (regex or keyword matches) that add points
+- **Score thresholds** (default: 3) for triggering suggestions
+- **Negation detection** that prevents false matches
 
 ### Customizing stack detection
 
@@ -143,7 +145,7 @@ Remove the corresponding entry from `settings.json`. Each hook is independent �
 
 - **[GSD (Get Shit Done)](https://github.com/coleam00/gsd)** — Lyra routes complex prompts to GSD commands for structured execution
 - **Claude Code agents** — Lyra routes specific tasks to specialized agents (@code-reviewer, @security-reviewer, etc.)
-- **[claude-mem](https://github.com/thedotmack/claude-mem)** — Persistent cross-session memory (Lyra context hook runs alongside claude-mem hooks)
+- **[claude-mem](https://github.com/thedotmack/claude-mem)** — Persistent cross-session memory (Lyra hooks run alongside claude-mem hooks)
 
 ## License
 

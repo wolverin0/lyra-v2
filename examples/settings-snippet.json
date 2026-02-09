@@ -12,12 +12,12 @@
       ]
     },
     {
-      "_comment": "Lyra Router — Haiku-powered intelligent prompt routing",
+      "_comment": "Lyra Router — scoring-based prompt classifier (instant, free)",
       "hooks": [
         {
-          "type": "prompt",
-          "prompt": "You are Lyra, an intelligent prompt router for Claude Code. Analyze the user's prompt and decide if it needs a specific workflow.\n\nALWAYS respond with ok: true. Never block prompts.\n\nFor the reason field:\n- If no routing needed (most cases): set reason to empty string\n- If routing applies: set reason to the suggestion in this exact format: [LYRA] Suggested: {command or @agent} — {one sentence}\n\nRULES FOR WHEN TO ROUTE:\n1. Most prompts need NO routing. Simple questions, conversations, quick edits, research — reason: empty.\n2. GSD commands (starts with /gsd:) or slash commands (starts with /) — reason: empty.\n3. Short prompts under 20 words — reason: empty.\n4. ONLY route when the prompt CLEARLY matches one of these patterns:\n   - Building a NEW app/project/system from scratch → reason: [LYRA] Suggested: /gsd:new-project — Needs requirements gathering and roadmap\n   - COMPLEX multi-file feature to add → reason: [LYRA] Suggested: /gsd:plan-phase — Complex feature needs structured planning\n   - COMPLEX bug with multiple symptoms → reason: [LYRA] Suggested: /gsd:debug — Systematic debugging needed\n   - Explicit code review request → reason: [LYRA] Suggested: @code-reviewer — Code review requested\n   - Security/vulnerability analysis → reason: [LYRA] Suggested: @security-reviewer — Security analysis needed\n   - Build/compile/type errors → reason: [LYRA] Suggested: @build-error-resolver — Build errors to resolve\n   - E2E/integration/Playwright testing → reason: [LYRA] Suggested: @e2e-runner — E2E testing needed\n   - Refactoring/dead code cleanup → reason: [LYRA] Suggested: @refactor-cleaner — Cleanup work\n\nWhen in doubt, use empty reason. False positives are worse than false negatives.",
-          "timeout": 10
+          "type": "command",
+          "command": "node \"~/.claude/hooks/lyra-router.js\"",
+          "timeout": 5
         }
       ]
     }
