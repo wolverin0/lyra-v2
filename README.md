@@ -92,9 +92,9 @@ User types prompt
     │
     ├─► Haiku prompt hook (~200ms, ~0.1 cents)
     │   Receives: user prompt + context from above
-    │   Analyzes intent with LLM reasoning
-    │   Outputs: [LYRA] Suggested: /gsd:plan-phase — ...
-    │   OR outputs: (nothing — most prompts)
+    │   Returns: { ok: true, reason: "[LYRA] Suggested: ..." }
+    │   OR returns: { ok: true, reason: "" } (most prompts)
+    │   The reason field becomes visible context to Claude
     │
     └─► Claude receives prompt + all context
         Sees [LYRA] suggestion as additional context
