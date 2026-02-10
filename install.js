@@ -138,6 +138,18 @@ function install() {
   log('Copying hooks...');
   copyHook('lyra-context.js');
   copyHook('lyra-router.js');
+
+  // Copy config (only if not already present — don't overwrite user customizations)
+  const configDest = path.join(HOOKS_DIR, 'lyra-config.json');
+  const configSrc = path.join(__dirname, 'hooks', 'lyra-config.json');
+  if (!fs.existsSync(configDest)) {
+    if (fs.existsSync(configSrc)) {
+      fs.copyFileSync(configSrc, configDest);
+      ok('Copied lyra-config.json (customize your routes here!)');
+    }
+  } else {
+    log('lyra-config.json already exists — keeping your customizations');
+  }
   if (isWindows) {
     copyHook('stop-quality-gate.ps1');
   } else {
@@ -237,7 +249,7 @@ function uninstall() {
   ok('Settings saved');
 
   // Remove hook files
-  const files = ['lyra-context.js', 'lyra-router.js', 'stop-quality-gate.ps1', 'stop-quality-gate.sh'];
+  const files = ['lyra-context.js', 'lyra-router.js', 'lyra-config.json', 'stop-quality-gate.ps1', 'stop-quality-gate.sh'];
   for (const f of files) {
     const p = path.join(HOOKS_DIR, f);
     if (fs.existsSync(p)) {

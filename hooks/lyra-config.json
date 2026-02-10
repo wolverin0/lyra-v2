@@ -1,0 +1,58 @@
+{
+  "categories": [
+    {
+      "route": "/gsd:new-project",
+      "description": "Building a NEW app/project/system from scratch",
+      "examples": ["build a chat app", "create a dashboard", "make a CLI tool", "I want to build a UI to..."]
+    },
+    {
+      "route": "/gsd:plan-phase",
+      "description": "Adding a COMPLEX multi-file feature to an existing project",
+      "examples": ["add authentication to the app", "implement payment processing", "migrate the database"]
+    },
+    {
+      "route": "/gsd:debug",
+      "description": "Investigating a bug with multiple symptoms or complex behavior",
+      "examples": ["the page crashes when...", "CORS errors on login", "the API returns 500"]
+    },
+    {
+      "route": "@code-reviewer",
+      "description": "Code review request",
+      "examples": ["review this code", "check the auth module", "review my PR"]
+    },
+    {
+      "route": "@security-reviewer",
+      "description": "Security audit, vulnerability check",
+      "examples": ["check for XSS", "security audit", "OWASP compliance"]
+    },
+    {
+      "route": "@build-error-resolver",
+      "description": "Build failures, type errors, compilation problems",
+      "examples": ["build fails", "TS2304 error", "won't compile"]
+    },
+    {
+      "route": "@e2e-runner",
+      "description": "End-to-end testing, Playwright tests",
+      "examples": ["write playwright tests", "e2e test the checkout"]
+    },
+    {
+      "route": "@refactor-cleaner",
+      "description": "Code cleanup, dead code removal, consolidation",
+      "examples": ["remove dead code", "refactor the auth module"]
+    },
+    {
+      "route": "@architect",
+      "description": "Architecture, performance, optimization, general improvement",
+      "examples": ["improve this app", "optimize performance", "how should I structure this", "make this faster"]
+    },
+    {
+      "route": "brainstorming",
+      "description": "Feature ideas, creative exploration, what to build next",
+      "examples": ["what features should I add", "brainstorm ideas for", "what should this app do"]
+    }
+  ],
+  "rules": [
+    "If the user says \"build\", \"create\", \"make\" + ANY noun describing something new, that is /gsd:new-project. Do NOT explore first.",
+    "If the user asks to \"improve\", \"optimize\", or find ways to make something better, that is @architect."
+  ]
+}

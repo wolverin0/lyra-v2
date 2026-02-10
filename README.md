@@ -82,6 +82,29 @@ Match found → "Lyra -> /gsd:new-project" + invokes workflow
 No match   → responds normally
 ```
 
+## Customize your routes
+
+Edit `~/.claude/hooks/lyra-config.json` to add, remove, or change categories:
+
+```json
+{
+  "categories": [
+    {
+      "route": "/my-custom-skill",
+      "description": "What this route handles",
+      "examples": ["trigger phrase 1", "trigger phrase 2"]
+    }
+  ],
+  "rules": [
+    "Optional hint: if user says X, route to Y"
+  ]
+}
+```
+
+The installer won't overwrite your config on upgrade — your customizations are safe.
+
+Routes can point to anything Claude Code supports: `/skill-name`, `@agent-name`, or any slash command.
+
 **Cost:** Zero. No external API calls.
 **Latency:** <1ms for the hook. Classification happens as part of Claude's normal response.
 **Accuracy:** As good as the model you're using — Opus/Sonnet understand intent far better than regex.
