@@ -47,9 +47,12 @@ CATEGORIES (with examples):
 - @build-error-resolver → Build/compile errors. Examples: "build fails", "TS2304 error", "won't compile"
 - @e2e-runner → E2E testing. Examples: "write playwright tests", "e2e test the checkout"
 - @refactor-cleaner → Cleanup. Examples: "remove dead code", "refactor the auth module"
+- @architect → Architecture, performance, optimization, general improvement. Examples: "improve this app", "optimize performance", "how should I structure this", "make this faster", "find ways to improve"
+- brainstorming → Feature ideas, creative exploration, what to build next. Examples: "what features should I add", "brainstorm ideas for", "what should this app do", "help me think about"
 - NONE → Questions, quick edits, conversations, follow-ups, confirmations
 
 KEY: If the user says "build", "create", "make", or "I want to build" + ANY noun describing something new, that is /gsd:new-project. Do NOT explore or research first.
+KEY: If the user asks to "improve", "optimize", or find ways to make something better, that is @architect.
 
 ACTION:
 - Not NONE → FIRST line: "Lyra -> {skill}", then invoke Skill tool IMMEDIATELY

@@ -53,6 +53,8 @@ This tells Claude to announce routing to you (since hook output is invisible to 
 | "Build fails with TS2304 errors" | `@build-error-resolver` | Build error specialist |
 | "Write playwright tests for checkout" | `@e2e-runner` | E2E testing agent |
 | "Clean up dead code in utils" | `@refactor-cleaner` | Cleanup specialist |
+| "Help me improve this app" | `@architect` | Architecture & optimization analysis |
+| "What features should I add next?" | `brainstorming` | Creative exploration of ideas |
 | "What does useEffect do?" | _(no routing)_ | Claude responds normally |
 
 **Most prompts get NO routing** — simple questions, quick edits, and conversations pass through untouched.
