@@ -1,6 +1,6 @@
 # Lyra v2
 
-Intelligent prompt router for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Analyzes your prompts and suggests optimal workflows — GSD commands, specialized agents, or direct execution.
+Intelligent prompt router for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Analyzes your prompts and routes them to the optimal workflow — GSD commands, specialized agents, or direct execution.
 
 ## What it does
 
@@ -9,25 +9,26 @@ Lyra adds three `UserPromptSubmit` command hooks to your Claude Code installatio
 | Hook | What it does |
 |------|-------------|
 | **Context** | Injects project state (GSD), debug sessions, and detected tech stack into every prompt |
-| **Router** | Scores your prompt against 8 workflow patterns and suggests the best match |
+| **Router** | Injects a classification instruction so the main session model routes your prompt intelligently |
 | **Quality Gate** (Stop) | Warns about `console.log` in modified files and uncommitted changes at session end |
 
 ### Example
 
 You type: _"Build me a user authentication system with OAuth, email/password, and session management"_
 
-Lyra outputs:
+Claude responds:
 ```
-[LYRA] Suggested: /gsd:new-project
+Lyra -> /gsd:new-project
 ```
+Then immediately invokes the `/gsd:new-project` workflow.
 
 You type: _"Fix the typo in the README"_
 
-Lyra outputs: nothing (correctly — this is a simple task).
+No routing — Claude responds normally.
 
 ### Routing table
 
-| Your prompt looks like... | Lyra suggests |
+| Your prompt looks like... | Lyra routes to |
 |--------------------------|---------------|
 | Build a new app/project from scratch | `/gsd:new-project` |
 | Complex multi-file feature | `/gsd:plan-phase` |
@@ -41,11 +42,11 @@ Lyra outputs: nothing (correctly — this is a simple task).
 
 ### Design philosophy
 
-- **False positives are worse than false negatives.** Lyra stays silent unless it's confident a workflow applies. You can always invoke commands manually.
-- **Suggestions, not mandates.** The `[LYRA]` output is a hint. Claude follows it unless there's a clear reason not to.
-- **Scoring, not regex.** Each pattern has multiple signals with weighted scores. A prompt must reach a confidence threshold of 3+ to trigger a suggestion.
-- **Negation-aware.** "Don't build a new project" won't match — Lyra checks for negation words before key verbs.
-- **GSD-aware.** If a GSD project already exists (`.planning/STATE.md`), "build an app" routes to `/gsd:plan-phase` instead of `/gsd:new-project`.
+- **False positives are worse than false negatives.** Lyra stays silent unless routing clearly applies. You can always invoke commands manually.
+- **The best model classifies.** Instead of keyword matching or Haiku API calls, the main session model (Opus/Sonnet) classifies your intent. It already understands context better than any external classifier.
+- **No API key needed.** The router injects a classification instruction — the session model does the work. Zero cost, zero latency, zero configuration.
+- **GSD-aware.** If a GSD project already exists (`.planning/STATE.md`), the instruction tells Claude to use `/gsd:plan-phase` instead of `/gsd:new-project`.
+- **Fast exits save tokens.** Short prompts, slash commands, yes/no responses, and simple questions are filtered out before the instruction is injected — no unnecessary context for trivial prompts.
 
 ## Install
 
@@ -87,53 +88,65 @@ This removes all Lyra hooks from `settings.json` and deletes the hook files.
 ```
 User types prompt
     |
+    v
+[Fast exit check] — short, slash commands, yes/no → skip (no injection)
+    |
+    v (prompt is substantial)
+    |
     +-> lyra-context.js (command hook, <5ms)
     |   Reads .planning/STATE.md, package.json
     |   stdout: [Stack: React, TypeScript, Supabase]
     |   stdout: [GSD Project State] ...
     |
-    +-> lyra-router.js (command hook, <5ms)
-    |   Reads prompt from stdin JSON
-    |   Scores against 8 workflow patterns
-    |   stdout: [LYRA] Suggested: /gsd:new-project
-    |   OR stdout: (nothing - most prompts)
+    +-> lyra-router.js (command hook, <1ms)
+    |   Outputs classification instruction to stdout
+    |   (no external API calls, no keyword matching)
     |
-    +-> Claude receives prompt + all stdout as context
-        Sees [LYRA] suggestion inline
-        Follows suggestion or works directly
+    +-> Claude receives prompt + instructions as context
+        Classifies intent using its own understanding
+        Routes: "Lyra -> /gsd:new-project" + invokes skill
+        OR: responds normally (NONE classification)
 ```
+
+### Why this approach?
+
+**v1** used regex keyword matching — fast but dumb, missed intent constantly.
+
+**v2 attempt 1** tried Haiku via prompt hooks — failed because prompt hooks are yes/no gates, not context injectors.
+
+**v2 attempt 2** tried Haiku via command hooks with API key — the `claude -p` CLI was too slow (>5s), and direct API calls require an API key.
+
+**v2 final** injects a classification instruction into the session context. The main model (Opus/Sonnet) already has full context and understands intent perfectly. No external calls, no API key, no latency, no keyword lists to maintain.
 
 ### Why command hooks?
 
 Claude Code has three hook types: `command`, `prompt`, and `agent`.
 
-For routing, **command hooks are the correct choice** because `UserPromptSubmit` command hook stdout is [added as context that Claude can see](https://code.claude.com/docs/en/hooks). Prompt hooks (`type: "prompt"`) are yes/no gates — their `reason` field is only shown when blocking (`ok: false`), and blocking erases the prompt entirely. That's the opposite of what a router needs.
-
-### Why scoring instead of Haiku?
-
-The v1 router used simple regex. The v2 plan called for Haiku prompt hooks. Testing revealed:
-- Prompt hooks can't inject context (they're gates, not injectors)
-- Command hooks with scoring are instant (<5ms), free, and 100% reliable
-- Scoring with weighted signals, negation detection, and confidence thresholds achieves ~90%+ accuracy
-
-Each category has multiple signals that add to a score. A prompt must reach a threshold of 3+ points to trigger a suggestion. This eliminates most false positives while catching genuine matches.
+For routing, **command hooks are the correct choice** because `UserPromptSubmit` command hook stdout is [added as context that Claude can see](https://code.claude.com/docs/en/hooks). Prompt hooks (`type: "prompt"`) are yes/no gates — their `reason` field is only shown when blocking (`ok: false`), and blocking erases the prompt entirely.
 
 ## Configuration
 
-### Customizing routing patterns
+### CLAUDE.md (required)
 
-Edit `~/.claude/hooks/lyra-router.js` to modify the scoring engine. Each category has:
-- **Signal patterns** (regex or keyword matches) that add points
-- **Score thresholds** (default: 3) for triggering suggestions
-- **Negation detection** that prevents false matches
+Add to your project or global CLAUDE.md:
 
-### Customizing stack detection
+```markdown
+## Lyra Prompt Router (MANDATORY)
 
-Edit `~/.claude/hooks/lyra-context.js` to add more dependency checks. The `checks` array maps npm package names to display labels.
+A command hook injects `[LYRA ROUTING]` into your system-reminders when a prompt
+needs classification. **The user CANNOT see system-reminders**, so you must announce routing.
+
+**When you see `[LYRA ROUTING]`:**
+1. FIRST line: Show `Lyra -> {skill}` so the user knows routing happened
+2. IMMEDIATELY invoke the Skill tool with the specified skill
+3. Do NOT enter generic plan mode or ask clarifying questions first
+
+**When there is NO `[LYRA ROUTING]`:** Handle the prompt directly.
+```
 
 ### Disabling specific hooks
 
-Remove the corresponding entry from `settings.json`. Each hook is independent — you can use context injection without the router, or the quality gate without either.
+Remove the corresponding entry from `settings.json`. Each hook is independent.
 
 ## Requirements
 
@@ -143,9 +156,9 @@ Remove the corresponding entry from `settings.json`. Each hook is independent �
 
 ## Works well with
 
-- **[GSD (Get Shit Done)](https://github.com/coleam00/gsd)** — Lyra routes complex prompts to GSD commands for structured execution
-- **Claude Code agents** — Lyra routes specific tasks to specialized agents (@code-reviewer, @security-reviewer, etc.)
-- **[claude-mem](https://github.com/thedotmack/claude-mem)** — Persistent cross-session memory (Lyra hooks run alongside claude-mem hooks)
+- **[GSD (Get Shit Done)](https://github.com/coleam00/gsd)** — Lyra routes complex prompts to GSD commands
+- **Claude Code agents** — routes to specialized agents (@code-reviewer, @security-reviewer, etc.)
+- **[claude-mem](https://github.com/thedotmack/claude-mem)** — persistent cross-session memory
 
 ## License
 
