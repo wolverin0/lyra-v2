@@ -34,23 +34,26 @@ function main() {
   const hasGsdProject = fs.existsSync(path.join(process.cwd(), '.planning', 'STATE.md'));
 
   // Inject classification instruction for the main session model
-  const instruction = `[LYRA ROUTING]
-Classify this user prompt into ONE of these workflows, or NONE:
+  const instruction = `[LYRA ROUTING] MANDATORY — classify BEFORE responding.
 
-- /gsd:new-project → Building a NEW app/project/system from scratch${hasGsdProject ? ' (NOTE: .planning/STATE.md exists — use /gsd:plan-phase instead for new features on this project)' : ''}
-- /gsd:plan-phase → Adding a COMPLEX multi-file feature to an existing project
-- /gsd:debug → Investigating a bug with multiple symptoms or complex behavior
-- @code-reviewer → Explicit request to review code quality
-- @security-reviewer → Security audit, vulnerability check
-- @build-error-resolver → Build failures, type errors, compilation problems
-- @e2e-runner → End-to-end testing, Playwright tests
-- @refactor-cleaner → Code cleanup, dead code removal, consolidation
-- NONE → Simple questions, quick edits, conversations, research
+STOP. Before you do ANYTHING else, classify this prompt:
 
-RULES:
-1. If classification is NOT "NONE": your FIRST line MUST be "Lyra -> {skill}" (e.g. "Lyra -> /gsd:new-project"), then IMMEDIATELY invoke the Skill tool. Do NOT enter generic plan mode.
-2. If classification is "NONE": respond normally, do not mention Lyra.
-3. When in doubt, classify as NONE. False positives are worse than false negatives.`;
+CATEGORIES (with examples):
+- /gsd:new-project → User wants to BUILD/CREATE/MAKE something new. Examples: "build a chat app", "create a dashboard", "make a CLI tool", "I want to build a UI to..."${hasGsdProject ? '\n  (NOTE: .planning/STATE.md exists — use /gsd:plan-phase for new features on THIS project)' : ''}
+- /gsd:plan-phase → Adding a COMPLEX feature to existing project. Examples: "add authentication to the app", "implement payment processing", "migrate the database"
+- /gsd:debug → Bug investigation with symptoms. Examples: "the page crashes when...", "CORS errors on login", "the API returns 500"
+- @code-reviewer → Code review request. Examples: "review this code", "check the auth module"
+- @security-reviewer → Security audit. Examples: "check for XSS", "security audit", "OWASP compliance"
+- @build-error-resolver → Build/compile errors. Examples: "build fails", "TS2304 error", "won't compile"
+- @e2e-runner → E2E testing. Examples: "write playwright tests", "e2e test the checkout"
+- @refactor-cleaner → Cleanup. Examples: "remove dead code", "refactor the auth module"
+- NONE → Questions, quick edits, conversations, follow-ups, confirmations
+
+KEY: If the user says "build", "create", "make", or "I want to build" + ANY noun describing something new, that is /gsd:new-project. Do NOT explore or research first.
+
+ACTION:
+- Not NONE → FIRST line: "Lyra -> {skill}", then invoke Skill tool IMMEDIATELY
+- NONE → respond normally, never mention Lyra`;
 
   process.stdout.write(instruction);
 }
