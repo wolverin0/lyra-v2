@@ -1,7 +1,7 @@
 {
   "name": "lyra-v2",
   "version": "2.0.0",
-  "description": "Intelligent prompt router for Claude Code. Uses Haiku to analyze prompts and suggest optimal workflows (GSD commands, specialized agents, or direct execution).",
+  "description": "Intelligent prompt router for Claude Code. Injects classification instructions so the session model routes prompts to optimal workflows (GSD commands, specialized agents, or direct execution).",
   "main": "install.js",
   "bin": {
     "lyra-install": "install.js"

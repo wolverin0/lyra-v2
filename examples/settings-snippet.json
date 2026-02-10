@@ -12,7 +12,7 @@
       ]
     },
     {
-      "_comment": "Lyra Router — scoring-based prompt classifier (instant, free)",
+      "_comment": "Lyra Router — injects classification instruction for session model",
       "hooks": [
         {
           "type": "command",

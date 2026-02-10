@@ -154,7 +154,13 @@ function install() {
     const backupPath = SETTINGS_PATH + '.lyra-backup';
     fs.copyFileSync(SETTINGS_PATH, backupPath);
     ok(`Backup saved to ${backupPath}`);
-    settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+    try {
+      settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+    } catch (e) {
+      warn(`settings.json is corrupted: ${e.message}`);
+      warn('Starting with empty settings. Your backup is safe.');
+      settings = {};
+    }
   }
 
   if (!settings.hooks) settings.hooks = {};
@@ -196,11 +202,11 @@ function install() {
   log('');
   log('What Lyra does:');
   log('  - Injects project state and stack into every prompt');
-  log('  - Scores prompts against 8 workflow patterns (instant, free)');
+  log('  - Routes prompts to the right workflow (GSD, agents, or direct)');
   log('  - Warns about console.log and uncommitted changes at session end');
   log('');
-  log('Lyra outputs [LYRA] Suggested: ... when it detects a matching pattern.');
-  log('Most prompts get NO suggestion (by design).');
+  log('When routing applies, Claude shows: Lyra -> /gsd:new-project');
+  log('Most prompts get NO routing (by design — simple tasks stay simple).');
   log('');
 }
 

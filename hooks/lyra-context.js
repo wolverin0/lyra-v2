@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Lyra v2 Context Hook - Injects project state and stack detection
 // Runs at UserPromptSubmit as a command hook
-// Routing is handled separately by the Haiku prompt hook in settings.json
+// Routing is handled separately by lyra-router.js
 
 const fs = require('fs');
 const path = require('path');
